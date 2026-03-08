@@ -1,121 +1,65 @@
 USE Hospital_DB
 
--- check data quality -- 
--- bronze.patient table
-select * from bronze.patients
+select * from bronze.appoinment_table
 
--- clean silver patient data -- 
+-- check data quality
 
-PRINT '>> Cleaning and Loading silver.patients...';
-TRUNCATE TABLE silver.patients;
-INSERT INTO silver.patients
-	(
-			patient_id	,		
-	first_name			,
-	last_name			,
-	gender				,
-	date_of_birth		,
-	age,
-	contact_number	,
-	address			,
-	insurance_provider,
-	insurance_number,
-	email			,
-	registration_date
-	)
-SELECT 
+select appointment_id from bronze.appoinment_table group by appointment_id having count(*) > 1
+
+select distinct status from bronze.appoinment_table
+
+select distinct reason_for_visit from bronze.appoinment_table
+
+-- integrity testing --
+
+select 
+apt.patient_id
+from bronze.appoinment_table AS apt 
+LEFT JOIN bronze.patients AS pt
+ON apt.patient_id = pt.patient_id
+where pt.patient_id IS NULL
+
+-- (alternative)
+SELECT *
+FROM bronze.appoinment_table
+WHERE NOT EXISTS (
+	SELECT 1
+	FROM bronze.patients AS pt
+	WHERE bronze.appoinment_table.patient_id = pt.patient_id
+)
+
+-- check is there any doctors in appoinmnt but not in doctors table
+SELECT
+	* 
+FROM bronze.appoinment_table
+WHERE NOT EXISTS(
+	SELECT 1
+	FROM bronze.doctors
+	WHERE bronze.appoinment_table.doctor_id = bronze.doctors.doctor_id
+)
+
+
+PRINT 'Cleaned silver.appoinment_table --'
+TRUNCATE TABLE silver.appoinment_table
+PRINT 'Loading data into silver.appoinment_table...'
+INSERT INTO silver.appoinment_table(
+	appointment_id		,
+	patient_id		   ,
+	doctor_id			,
+	reason_for_visit	,
+	status,
+	appointment_time	,
+	appointment_date	
+)
+SELECT
+appointment_id,
 patient_id,
-TRIM(first_name) AS first_name,
-TRIM(last_name) AS last_name,
-CASE WHEN UPPER(gender) = 'F' THEN 'Female'
-     WHEN UPPER(gender) = 'M' THEN 'Male'
-	 ELSE 'N/A'
-END gender,
-date_of_birth,
-DATEDIFF(YEAR,date_of_birth,GETDATE()) AS age,
-CONCAT('+',contact_number) AS contact_number,
-TRIM(address) AS address,
-TRIM(insurance_provider) AS insurance_provider,
-insurance_number,
-email,
-registration_date
-FROM (
-   SELECT *,
-   ROW_NUMBER() OVER(PARTITION BY patient_id ORDER BY registration_date ASC) AS rn
-   FROM bronze.patients
-)t 
-WHERE rn = 1
+doctor_id,
+TRIM(reason_for_visit) AS reason_for_visit,
+TRIM(status) AS status,
+appointment_time,
+appointment_date
+FROM bronze.appoinment_table
 
-
--- check is there any patient_id null or duplicate
-
-select 
-	patient_id
-from bronze.patients
-group by patient_id
-having count(*) > 1 or patient_id IS NULL
-
--- check where we have blank spaces 
-select 
-	first_name,
-	last_name,
-	gender,
-	contact_number,
-	address,
-	insurance_provider,
-	email
-from bronze.patients
-where first_name != TRIM(first_name) 
-	or last_name != TRIM(last_name) 
-	or gender != trim(gender) 
-	or contact_number != TRIM(contact_number) 
-	or address != TRIM(address) 
-	or insurance_provider != TRIM(insurance_provider)
-	or email != TRIM(email)
-
--- checking gender 
-select 
-	gender
-from bronze.patients
-where gender is null
-
--- check email address quality
-select 
-email
-from bronze.patients
-where email like('%@%')
-
-
-
--- check data silver.patients
-
-select * from silver.patients
-
--- check data quality again
-select 
-	patient_id
-from silver.patients
-group by patient_id
-having count(*) > 1 or patient_id IS NULL
-
-select 
-	first_name,
-	last_name,
-	gender,
-	contact_number,
-	address,
-	insurance_provider,
-	email
-from silver.patients
-where first_name != TRIM(first_name) 
-	or last_name != TRIM(last_name) 
-	or gender != trim(gender) 
-	or contact_number != TRIM(contact_number) 
-	or address != TRIM(address) 
-	or insurance_provider != TRIM(insurance_provider)
-	or email != TRIM(email)
-
-select 
-	gender
-from silver.patients
-where gender is null
+-- check data
+select * from silver.appoinment_table
