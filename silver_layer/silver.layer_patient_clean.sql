@@ -13,9 +13,11 @@ INSERT INTO silver.patients
 			patient_id	,		
 	first_name			,
 	last_name			,
+	full_name,
 	gender				,
 	date_of_birth		,
 	age,
+	age_band,
 	contact_number	,
 	address			,
 	insurance_provider,
@@ -27,12 +29,20 @@ SELECT
 patient_id,
 TRIM(first_name) AS first_name,
 TRIM(last_name) AS last_name,
+CONCAT(TRIM(first_name),' ',TRIM(last_name)) AS full_name,
 CASE WHEN UPPER(gender) = 'F' THEN 'Female'
      WHEN UPPER(gender) = 'M' THEN 'Male'
 	 ELSE 'N/A'
 END gender,
 date_of_birth,
 DATEDIFF(YEAR,date_of_birth,GETDATE()) AS age,
+CASE WHEN DATEDIFF(YEAR,date_of_birth,GETDATE()) BETWEEN 0 AND 12 THEN 'Child'
+     WHEN DATEDIFF(YEAR,date_of_birth,GETDATE()) BETWEEN 13 AND 19 THEN 'Teen'
+	 WHEN DATEDIFF(YEAR,date_of_birth,GETDATE()) BETWEEN 20 AND 35 THEN 'Young Adult'
+	 WHEN DATEDIFF(YEAR,date_of_birth,GETDATE()) BETWEEN 36 AND 55 THEN 'Adult'
+     WHEN DATEDIFF(YEAR,date_of_birth,GETDATE()) BETWEEN 56 AND 75 THEN 'Senior'
+	 ELSE 'Elderly'
+END AS age_band,
 CONCAT('+',contact_number) AS contact_number,
 TRIM(address) AS address,
 TRIM(insurance_provider) AS insurance_provider,

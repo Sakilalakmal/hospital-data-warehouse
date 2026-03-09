@@ -33,9 +33,11 @@ CREATE TABLE silver.patients (
 	patient_id			NVARCHAR(50),
 	first_name			NVARCHAR(50),
 	last_name			NVARCHAR(50),
+	full_name           NVARCHAR(70),
 	gender				NVARCHAR(10),
 	date_of_birth		DATE,
-	age INT,
+	age					INT,
+	age_band            NVARCHAR(15),
 	contact_number		NVARCHAR(30),
 	address				NVARCHAR(50),
 	insurance_provider	NVARCHAR(50),
@@ -92,14 +94,15 @@ GO
 
 CREATE TABLE silver.doctors (
 	
-	doctor_id	NVARCHAR(50),
-	first_name	NVARCHAR(50),
-	last_name	NVARCHAR(50),
-	specialization	NVARCHAR(50),
-	phone_number	NVARCHAR(30),
+	doctor_id			NVARCHAR(50),
+	first_name			NVARCHAR(50),
+	last_name			NVARCHAR(50),
+	doct_full_name		NVARCHAR(50),
+	specialization		NVARCHAR(50),
+	phone_number		NVARCHAR(30),
 	years_experience	INT,
-	hospital_branch	 NVARCHAR(50),
-	email  NVARCHAR(80),
-	dwh_create_date DATETIME2 DEFAULT GETDATE()
+	hospital_branch		NVARCHAR(50),
+	email				NVARCHAR(80),
+	dwh_create_date		DATETIME2 DEFAULT GETDATE()
 
 )
