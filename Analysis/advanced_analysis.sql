@@ -3,16 +3,16 @@ USE Hospital_DB
 -- Top revenue doctor in each hospital branch
 
 SELECT * FROM (
-SELECT
-bill.doctor_key,
-doc.hospital_branch,
-doc.doct_full_name,
-SUM(bill.paid_bill_amount) total_revenue,
-RANK() OVER(PARTITION BY doc.hospital_branch ORDER BY SUM(bill.paid_bill_amount) DESC) AS rn
-FROM gold.fact_billing bill
-LEFT JOIN gold.dim_doctor AS doc
-ON bill.doctor_key = doc.doctor_key
-GROUP BY bill.doctor_key , doc.hospital_branch , doc.doct_full_name
+	SELECT
+		bill.doctor_key,
+		doc.hospital_branch,
+		doc.doct_full_name,
+		SUM(bill.paid_bill_amount) total_revenue,
+		RANK() OVER(PARTITION BY doc.hospital_branch ORDER BY SUM(bill.paid_bill_amount) DESC) AS rn
+	FROM gold.fact_billing bill
+	LEFT JOIN gold.dim_doctor AS doc
+	ON bill.doctor_key = doc.doctor_key
+	GROUP BY bill.doctor_key , doc.hospital_branch , doc.doct_full_name
 )t WHERE rn = 1
 
 
@@ -71,3 +71,54 @@ LEFT JOIN gold.dim_doctor AS doc
 ON trt.doctor_key = doc.doctor_key
 GROUP BY  doc.specialization , trt.treatment_type
 ) t WHERE rn = 1
+
+-- Patients whose total paid billing is above the average patient billing
+
+WITH total_paid AS (
+select 
+bill.patient_id AS patient_id,
+SUM(paid_bill_amount) AS total_paid
+from gold.fact_billing AS bill
+GROUP BY bill.patient_id
+)
+SELECT 
+total_paid.patient_id,
+gp.full_name
+FROM total_paid
+LEFT JOIN gold.dim_patients AS gp
+ON total_paid.patient_id = gp.patient_id
+WHERE total_paid.total_paid > (SELECT AVG(total_paid) from total_paid)
+
+-- Specializations with cancellation rate higher than overall cancellation rate
+WITH appointment_count AS (
+    SELECT 
+        doc.specialization AS spec,
+        SUM(apo.appointment_count) AS total_appointment,
+        SUM(CASE 
+                WHEN apo.cancelled_flag = 1 
+                THEN apo.appointment_count 
+                ELSE 0 
+            END) AS cancel_appointment
+    FROM gold.fact_appointment AS apo
+    LEFT JOIN gold.dim_doctor AS doc
+        ON apo.doctor_key = doc.doctor_key
+    GROUP BY doc.specialization
+)
+
+SELECT 
+    spec,
+    cancel_appointment,
+    total_appointment,
+    CAST(cancel_appointment * 100.0 / total_appointment AS DECIMAL(18,2)) AS cancel_ratio
+FROM appointment_count
+WHERE cancel_appointment * 100.0 / total_appointment >
+(
+    SELECT 
+        SUM(CASE 
+                WHEN cancelled_flag = 1 
+                THEN appointment_count 
+                ELSE 0 
+            END) * 100.0 
+        / SUM(appointment_count)
+    FROM gold.fact_appointment
+);
